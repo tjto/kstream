@@ -2,6 +2,7 @@ package streams
 
 import (
 	"fmt"
+
 	"github.com/gmbyapa/kstream/v2/backend"
 	"github.com/gmbyapa/kstream/v2/backend/pebble"
 	"github.com/gmbyapa/kstream/v2/kafka"
@@ -265,13 +266,6 @@ func (b *StreamBuilder) setupOpts(opts ...BuilderOpt) {
 		)...)
 	}
 
-	admin, err := sarama.NewAdmin(b.config.BootstrapServers, sarama.WithLogger(b.config.Logger))
-	if err != nil {
-		panic(err)
-	}
-
-	b.kafkaAdmin = admin
-
 	// Apply default adaptors
 	b.providers.groupConsumer = librd3Adpt.NewGroupConsumerProvider(librd3Adpt.NewGroupConsumerConfig())
 	b.providers.consumer = librd3Adpt.NewConsumerProvider(librd3Adpt.NewConsumerConfig())
@@ -280,4 +274,13 @@ func (b *StreamBuilder) setupOpts(opts ...BuilderOpt) {
 	for _, opt := range opts {
 		opt(b)
 	}
+	if b.kafkaAdmin == nil {
+		admin, err := sarama.NewAdmin(b.config.BootstrapServers, sarama.WithLogger(b.config.Logger))
+		if err != nil {
+			panic(err)
+		}
+
+		b.kafkaAdmin = admin
+	}
+
 }
