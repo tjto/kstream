@@ -118,6 +118,7 @@ func NewProducer(configs *ProducerConfig, token *librdKafka.OAuthBearerToken) (k
 		if err := producer.SetOAuthBearerToken(*token); err != nil {
 			return nil, errors.Wrap(err, `oauth bearer token set failed`)
 		}
+		configs.Logger.Info("Producer with OAuthBearerToken initiated")
 	}
 
 	defer configs.Logger.Info(`Producer initiated`)
