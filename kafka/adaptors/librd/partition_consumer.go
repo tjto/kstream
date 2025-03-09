@@ -50,11 +50,29 @@ func (c *consumerProvider) NewBuilder(conf *kafka.ConsumerConfig) kafka.Consumer
 		defaultConfCopy := c.config.copy()
 		configure(defaultConfCopy.ConsumerConfig)
 
-		return NewPartitionConsumer(defaultConfCopy)
+		return NewPartitionConsumer(defaultConfCopy, nil)
 	}
 }
 
-func NewPartitionConsumer(configs *ConsumerConfig) (kafka.PartitionConsumer, error) {
+func (c *consumerProvider) NewBuilderWithOauthBearerToken(conf *kafka.ConsumerConfig, token *librdKafka.OAuthBearerToken) kafka.ConsumerBuilder {
+	c.config.ConsumerConfig = conf
+	if err := c.config.Librd.SetKey(`client.id`, c.config.Id); err != nil {
+		panic(err.Error())
+	}
+
+	if c.config.EOSEnabled {
+		c.config.IsolationLevel = kafka.ReadCommitted
+	}
+
+	return func(configure func(*kafka.ConsumerConfig)) (kafka.PartitionConsumer, error) {
+		defaultConfCopy := c.config.copy()
+		configure(defaultConfCopy.ConsumerConfig)
+
+		return NewPartitionConsumer(defaultConfCopy, token)
+	}
+}
+
+func NewPartitionConsumer(configs *ConsumerConfig, token *librdKafka.OAuthBearerToken) (kafka.PartitionConsumer, error) {
 	if err := configs.setUp(); err != nil {
 		return nil, errors.Wrap(err, `producer configs setup failed`)
 	}
@@ -64,6 +82,11 @@ func NewPartitionConsumer(configs *ConsumerConfig) (kafka.PartitionConsumer, err
 		return nil, errors.Wrap(err, `new consumer failed`)
 	}
 
+	if token != nil {
+		if err := consumer.SetOAuthBearerToken(*token); err != nil {
+			return nil, errors.Wrap(err, `oauth bearer token set failed`)
+		}
+	}
 	pc := &partitionConsumer{
 		consumer:        consumer,
 		config:          configs,

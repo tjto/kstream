@@ -81,7 +81,7 @@ func seed(logger log.Logger) {
 	conf.BootstrapServers = strings.Split(*bootstrapServers, `,`)
 	conf.Transactional.Enabled = true
 	conf.Transactional.Id = `words-producer`
-	producer, err := librd.NewProducer(conf)
+	producer, err := librd.NewProducer(conf, nil)
 	if err != nil {
 		panic(err)
 	}

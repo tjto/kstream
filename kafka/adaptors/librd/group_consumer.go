@@ -60,11 +60,22 @@ func (c *groupConsumerProvider) NewBuilder(conf *kafka.GroupConsumerConfig) kafk
 		defaultConfCopy := c.config.copy()
 		configure(defaultConfCopy.GroupConsumerConfig)
 
-		return NewGroupConsumer(defaultConfCopy)
+		return NewGroupConsumer(defaultConfCopy, nil)
 	}
 }
 
-func NewGroupConsumer(config *GroupConsumerConfig) (kafka.GroupConsumer, error) {
+func (c *groupConsumerProvider) NewBuilderWithOauthBearerToken(conf *kafka.GroupConsumerConfig, token *librdKafka.OAuthBearerToken) kafka.GroupConsumerBuilder {
+	c.config.GroupConsumerConfig = conf
+
+	return func(configure func(*kafka.GroupConsumerConfig)) (kafka.GroupConsumer, error) {
+		defaultConfCopy := c.config.copy()
+		configure(defaultConfCopy.GroupConsumerConfig)
+
+		return NewGroupConsumer(defaultConfCopy, token)
+	}
+}
+
+func NewGroupConsumer(config *GroupConsumerConfig, token *librdKafka.OAuthBearerToken) (kafka.GroupConsumer, error) {
 	if err := config.setUp(); err != nil {
 		return nil, errors.Wrap(err, `group consumer config setup failed`)
 	}
@@ -72,6 +83,11 @@ func NewGroupConsumer(config *GroupConsumerConfig) (kafka.GroupConsumer, error) 
 	con, err := librdKafka.NewConsumer(config.Librd)
 	if err != nil {
 		return nil, errors.Wrap(err, `new consumer failed`)
+	}
+	if token != nil {
+		if err := con.SetOAuthBearerToken(*token); err != nil {
+			return nil, errors.Wrap(err, `failed to set OAuthBearerToken`)
+		}
 	}
 
 	config.Logger = config.Logger.NewLog(log.Prefixed(`GroupConsumer`))

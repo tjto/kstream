@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	librdKafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/tryfix/log"
 	"github.com/tryfix/metrics/v2"
 	"time"
@@ -119,10 +120,12 @@ func (conf *GroupConsumerConfig) Copy() *GroupConsumerConfig {
 
 type GroupConsumerProvider interface {
 	NewBuilder(config *GroupConsumerConfig) GroupConsumerBuilder
+	NewBuilderWithOauthBearerToken(config *GroupConsumerConfig, token *librdKafka.OAuthBearerToken) GroupConsumerBuilder
 }
 
 type ConsumerProvider interface {
 	NewBuilder(config *ConsumerConfig) ConsumerBuilder
+	NewBuilderWithOauthBearerToken(config *ConsumerConfig, token *librdKafka.OAuthBearerToken) ConsumerBuilder
 }
 
 type ProducerFactory interface {

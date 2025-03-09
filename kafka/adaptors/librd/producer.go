@@ -70,11 +70,30 @@ func (c *producerProvider) NewBuilder(conf *kafka.ProducerConfig) kafka.Producer
 		defaultConfCopy := c.config.copy()
 		configure(defaultConfCopy.ProducerConfig)
 
-		return NewProducer(defaultConfCopy)
+		return NewProducer(defaultConfCopy, nil)
 	}
 }
 
-func NewProducer(configs *ProducerConfig) (kafka.Producer, error) {
+func (c *producerProvider) NewBuilderWithOauthBearerToken(conf *kafka.ProducerConfig, token *librdKafka.OAuthBearerToken) kafka.ProducerBuilder {
+	c.config.ProducerConfig = conf
+
+	if err := c.config.Librd.SetKey(`go.events.channel.size`, 1000); err != nil {
+		panic(err)
+	}
+
+	if err := c.config.Librd.SetKey(`go.produce.channel.size`, 1000); err != nil {
+		panic(err)
+	}
+
+	return func(configure func(*kafka.ProducerConfig)) (kafka.Producer, error) {
+		defaultConfCopy := c.config.copy()
+		configure(defaultConfCopy.ProducerConfig)
+
+		return NewProducer(defaultConfCopy, token)
+	}
+}
+
+func NewProducer(configs *ProducerConfig, token *librdKafka.OAuthBearerToken) (kafka.Producer, error) {
 	if err := configs.setUp(); err != nil {
 		return nil, errors.Wrap(err, `producer configs setup failed`)
 	}
@@ -94,6 +113,11 @@ func NewProducer(configs *ProducerConfig) (kafka.Producer, error) {
 	producer, err := librdKafka.NewProducer(configs.Librd)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf(`Producer(%s) init failed`, configs.Id))
+	}
+	if token != nil {
+		if err := producer.SetOAuthBearerToken(*token); err != nil {
+			return nil, errors.Wrap(err, `oauth bearer token set failed`)
+		}
 	}
 
 	defer configs.Logger.Info(`Producer initiated`)
