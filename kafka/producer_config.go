@@ -17,6 +17,7 @@ type ProducerConfig struct {
 	Idempotent      bool
 	Logger          log.Logger
 	MetricsReporter metrics.Reporter
+	TokenGenerator  OauthBearerTokenGeneratorFunc
 }
 
 func (conf *ProducerConfig) Copy() *ProducerConfig {
@@ -29,6 +30,7 @@ func (conf *ProducerConfig) Copy() *ProducerConfig {
 		Idempotent:       conf.Idempotent,
 		Logger:           conf.Logger,
 		MetricsReporter:  conf.MetricsReporter,
+		TokenGenerator:   conf.TokenGenerator,
 	}
 }
 

@@ -10,7 +10,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	librdKafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"time"
 )
 
@@ -29,7 +28,6 @@ type ProducerErr interface {
 
 type ProducerProvider interface {
 	NewBuilder(config *ProducerConfig) ProducerBuilder
-	NewBuilderWithOauthBearerToken(config *ProducerConfig, token *librdKafka.OAuthBearerToken) ProducerBuilder
 }
 
 type ProducerBuilder func(conf func(*ProducerConfig)) (Producer, error)

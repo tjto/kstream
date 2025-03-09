@@ -2,8 +2,6 @@ package streams
 
 import (
 	"fmt"
-	librdKafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
-
 	"github.com/gmbyapa/kstream/v2/backend"
 	"github.com/gmbyapa/kstream/v2/backend/pebble"
 	"github.com/gmbyapa/kstream/v2/kafka"
@@ -190,12 +188,7 @@ func (b *StreamBuilder) GlobalTable(topic string, keyEnc, valEnc encoding.Encode
 }
 
 func (b *StreamBuilder) Build() (topology.Topology, error) {
-	b.builderCtx = b.newBuilderCtx(nil)
-	return b.tpBuilder.Build(b.builderCtx)
-}
-
-func (b *StreamBuilder) BuildWithOauthBearerToken(token *librdKafka.OAuthBearerToken) (topology.Topology, error) {
-	b.builderCtx = b.newBuilderCtx(token)
+	b.builderCtx = b.newBuilderCtx()
 	return b.tpBuilder.Build(b.builderCtx)
 }
 
@@ -234,52 +227,15 @@ func (b *StreamBuilder) NewRunner() Runner {
 	}
 }
 
-func (b *StreamBuilder) NewRunnerWithOauthBearerToken(token librdKafka.OAuthBearerToken) Runner {
-	return &streamRunner{
-		groupConsumer:     b.providers.groupConsumer.NewBuilderWithOauthBearerToken(b.config.Consumer, &token),
-		consumerCount:     b.config.Processing.ConsumerCount,
-		partitionConsumer: b.providers.consumer.NewBuilderWithOauthBearerToken(b.config.Consumer.ConsumerConfig, &token),
-		metricsReporter:   b.config.MetricsReporter,
-		logger:            b.config.Logger.NewLog(log.Prefixed(`StreamRunner`)),
-		taskManagerBuilder: func(logger log.Logger, topologies topology.SubTopologyBuilders) (tasks.TaskManager, error) {
-			partitionConsumer, err := b.providers.consumer.NewBuilderWithOauthBearerToken(b.config.Consumer.ConsumerConfig, &token)(func(config *kafka.ConsumerConfig) {
-				config.Logger = logger
-				config.MetricsReporter = b.config.MetricsReporter
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, `TaskManager build error`)
-			}
-
-			return tasks.NewTaskManager(
-				b.builderCtx,
-				logger,
-				partitionConsumer,
-				topologies,
-				b.config.Processing.Guarantee == ExactlyOnce,
-				tasks.WithBufferSize(b.config.Processing.Buffer.Size),
-				tasks.WithBufferFlushInterval(b.config.Processing.Buffer.FlushInterval),
-				tasks.WithFailedMessageHandler(b.config.Processing.FailedMessageHandler),
-			)
-		},
-		ctx: b.builderCtx,
-	}
-}
-
 func (b *StreamBuilder) Topology() topology.Builder {
 	return b.tpBuilder
 }
 
-func (b *StreamBuilder) newBuilderCtx(token *librdKafka.OAuthBearerToken) topology.BuilderContext {
-	var producer kafka.ProducerBuilder
-	if token != nil {
-		producer = b.providers.producer.NewBuilderWithOauthBearerToken(b.config.Producer, token)
-	} else {
-		producer = b.providers.producer.NewBuilder(b.config.Producer)
-	}
+func (b *StreamBuilder) newBuilderCtx() topology.BuilderContext {
 	return topology.NewBuilderContext(
 		b.config.ApplicationId,
 		b.storeRegistry,
-		producer,
+		b.providers.producer.NewBuilder(b.config.Producer),
 		b.kafkaAdmin,
 		b.config.Logger,
 		b.config.MetricsReporter,

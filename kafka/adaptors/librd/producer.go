@@ -70,30 +70,11 @@ func (c *producerProvider) NewBuilder(conf *kafka.ProducerConfig) kafka.Producer
 		defaultConfCopy := c.config.copy()
 		configure(defaultConfCopy.ProducerConfig)
 
-		return NewProducer(defaultConfCopy, nil)
+		return NewProducer(defaultConfCopy)
 	}
 }
 
-func (c *producerProvider) NewBuilderWithOauthBearerToken(conf *kafka.ProducerConfig, token *librdKafka.OAuthBearerToken) kafka.ProducerBuilder {
-	c.config.ProducerConfig = conf
-
-	if err := c.config.Librd.SetKey(`go.events.channel.size`, 1000); err != nil {
-		panic(err)
-	}
-
-	if err := c.config.Librd.SetKey(`go.produce.channel.size`, 1000); err != nil {
-		panic(err)
-	}
-
-	return func(configure func(*kafka.ProducerConfig)) (kafka.Producer, error) {
-		defaultConfCopy := c.config.copy()
-		configure(defaultConfCopy.ProducerConfig)
-
-		return NewProducer(defaultConfCopy, token)
-	}
-}
-
-func NewProducer(configs *ProducerConfig, token *librdKafka.OAuthBearerToken) (kafka.Producer, error) {
+func NewProducer(configs *ProducerConfig) (kafka.Producer, error) {
 	if err := configs.setUp(); err != nil {
 		return nil, errors.Wrap(err, `producer configs setup failed`)
 	}
@@ -114,8 +95,8 @@ func NewProducer(configs *ProducerConfig, token *librdKafka.OAuthBearerToken) (k
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf(`Producer(%s) init failed`, configs.Id))
 	}
-	if token != nil {
-		if err := producer.SetOAuthBearerToken(*token); err != nil {
+	if configs.TokenGenerator != nil {
+		if err := producer.SetOAuthBearerToken(configs.TokenGenerator()); err != nil {
 			return nil, errors.Wrap(err, `oauth bearer token set failed`)
 		}
 		configs.Logger.Info("Producer with OAuthBearerToken initiated")
@@ -141,6 +122,12 @@ func NewProducer(configs *ProducerConfig, token *librdKafka.OAuthBearerToken) (k
 				p.config.Logger.Error(fmt.Sprintf(`Event %s`, e.TopicPartition.Error))
 			case *librdKafka.Stats:
 				p.config.Logger.Error(fmt.Sprintf(`Event %s`, e))
+			case librdKafka.OAuthBearerTokenRefresh:
+				if p.config.TokenGenerator != nil {
+					if err := producer.SetOAuthBearerToken(p.config.TokenGenerator()); err != nil {
+						p.config.Logger.Error(err)
+					}
+				}
 			}
 		}
 	}()

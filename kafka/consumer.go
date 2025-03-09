@@ -95,6 +95,8 @@ const (
 // When consuming this happens before the consumer record is sent to the per partition chan
 type RecordContextBinderFunc func(record Record) context.Context
 
+type OauthBearerTokenGeneratorFunc func() librdKafka.OAuthBearerToken
+
 // GroupConsumerConfig defines configurations for high level Group Consumer
 type GroupConsumerConfig struct {
 	*ConsumerConfig
@@ -120,12 +122,10 @@ func (conf *GroupConsumerConfig) Copy() *GroupConsumerConfig {
 
 type GroupConsumerProvider interface {
 	NewBuilder(config *GroupConsumerConfig) GroupConsumerBuilder
-	NewBuilderWithOauthBearerToken(config *GroupConsumerConfig, token *librdKafka.OAuthBearerToken) GroupConsumerBuilder
 }
 
 type ConsumerProvider interface {
 	NewBuilder(config *ConsumerConfig) ConsumerBuilder
-	NewBuilderWithOauthBearerToken(config *ConsumerConfig, token *librdKafka.OAuthBearerToken) ConsumerBuilder
 }
 
 type ProducerFactory interface {
@@ -193,6 +193,7 @@ type ConsumerConfig struct {
 	MetricsReporter metrics.Reporter
 
 	ContextExtractor RecordContextBinderFunc
+	TokenGenerator   OauthBearerTokenGeneratorFunc
 }
 
 func (conf *ConsumerConfig) Copy() *ConsumerConfig {
@@ -207,6 +208,7 @@ func (conf *ConsumerConfig) Copy() *ConsumerConfig {
 		ContextExtractor:        conf.ContextExtractor,
 		MaxPollInterval:         conf.MaxPollInterval,
 		ConsumerMessageChanSize: conf.ConsumerMessageChanSize,
+		TokenGenerator:          conf.TokenGenerator,
 	}
 }
 
