@@ -199,6 +199,10 @@ MAIN:
 
 			case librdKafka.Error:
 				g.config.Logger.Warn(fmt.Sprintf(`Consume error due to %s`, e))
+			case librdKafka.OAuthBearerTokenRefresh:
+				if g.config.TokenGenerator != nil {
+					return g.consumer.SetOAuthBearerToken(g.config.TokenGenerator())
+				}
 			default:
 			}
 		}
