@@ -63,11 +63,13 @@ func NewPartitionConsumer(configs *ConsumerConfig) (kafka.PartitionConsumer, err
 	if err != nil {
 		return nil, errors.Wrap(err, `new consumer failed`)
 	}
+	configs.Logger = configs.Logger.NewLog(log.Prefixed(`PartitionConsumer`))
 
 	if configs.TokenGenerator != nil {
 		if err := consumer.SetOAuthBearerToken(configs.TokenGenerator()); err != nil {
 			return nil, errors.Wrap(err, `oauth bearer token set failed`)
 		}
+		configs.Logger.Info("partition consumer with oauth token generator")
 	}
 	pc := &partitionConsumer{
 		consumer:        consumer,

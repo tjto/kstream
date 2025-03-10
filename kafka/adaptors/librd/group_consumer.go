@@ -73,12 +73,13 @@ func NewGroupConsumer(config *GroupConsumerConfig) (kafka.GroupConsumer, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, `new consumer failed`)
 	}
+	config.Logger = config.Logger.NewLog(log.Prefixed(`GroupConsumer`))
 	if config.TokenGenerator != nil {
 		if err = con.SetOAuthBearerToken(config.TokenGenerator()); err != nil {
 			return nil, errors.Wrap(err, `failed to set OAuthBearerToken`)
 		}
+		config.Logger.Info("group consumer with oauthbearer token setup")
 	}
-	config.Logger = config.Logger.NewLog(log.Prefixed(`GroupConsumer`))
 
 	return &groupConsumer{
 		consumer:       con,
